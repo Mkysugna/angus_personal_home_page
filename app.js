@@ -1,3 +1,6 @@
+// Extract MediaPipe tools directly from the globally loaded bundle
+const { FilesetResolver, HandLandmarker } = mpTasksVision;
+
 const video = document.getElementById("webcam");
 const statusText = document.getElementById("status");
 let handLandmarker = undefined;
@@ -5,21 +8,26 @@ let lastVideoTime = -1;
 
 // 1. Initialize MediaPipe Hand Landmarker
 async function initializeHandLandmarker() {
-    const vision = await FilesetResolver.forVisionTasks(
-        "https://jsdelivr.net"
-    );
-    
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: "https://googleapis.com",
-            delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        numHands: 2
-    });
-    
-    statusText.innerText = "Models loaded! Starting camera...";
-    startCamera();
+    try {
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://jsdelivr.net"
+        );
+        
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: "https://googleapis.com",
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numHands: 2
+        });
+        
+        statusText.innerText = "Models loaded! Starting camera...";
+        startCamera();
+    } catch (error) {
+        statusText.innerText = "Error loading AI models. Check browser console.";
+        console.error("MediaPipe initialization failed:", error);
+    }
 }
 
 // 2. Start user webcam
@@ -28,7 +36,7 @@ function startCamera() {
     .then((stream) => {
         video.srcObject = stream;
         video.addEventListener("loadeddata", predictLoop);
-        statusText.innerText = "Tracking Active!";
+        statusText.innerText = "Tracking Active! Open developer console to see data.";
     })
     .catch((err) => {
         statusText.innerText = "Camera access denied or not found.";
