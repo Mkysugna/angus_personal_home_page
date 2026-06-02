@@ -96,6 +96,17 @@
 
 
     }
+           
+        #video-container { 
+            position: relative; 
+            display: inline-block; 
+            margin-top: 20px;
+        }
+        video { 
+            transform: rotateY(180deg); 
+            border-radius: 10px;
+            background: #000;
+        }
     
     </style>
    
@@ -154,12 +165,80 @@
     
     <br>
         <br>
-    <p id="status">Loading AI Models... Please wait...</p>
+   <h3 id="status">🔄 Loading MediaPipe Engines... Please wait...</h3>
     
     <div id="video-container">
         <video id="webcam" autoplay playsinline width="640" height="480"></video>
-    </div> 
-        <script type="module" src="app.js"></script>
+    </div>
+
+    <!-- We load MediaPipe inside a native JavaScript module script -->
+    <script type="module">
+        // Import directly from ESM CDN to guarantee variable scope definition
+        import { HandLandmarker, FilesetResolver } from "https://jsdelivr.net";
+
+        const video = document.getElementById("webcam");
+        const statusText = document.getElementById("status");
+        let handLandmarker = undefined;
+        let lastVideoTime = -1;
+
+        async function initializeHandLandmarker() {
+            try {
+                // 1. Get the WebAssembly (WASM) runner files
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://jsdelivr.net"
+                );
+                
+                // 2. Load the actual AI model file
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://googleapis.com",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 2
+                });
+                
+                statusText.innerText = "✨ Models loaded! Requesting camera...";
+                startCamera();
+            } catch (error) {
+                statusText.innerText = "❌ Error loading AI models. See developer console.";
+                console.error("MediaPipe failed to load:", error);
+            }
+        }
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then((stream) => {
+                video.srcObject = stream;
+                video.addEventListener("loadeddata", predictLoop);
+                statusText.innerText = "✅ Tracking Active! Right-click -> Inspect -> Console to see data.";
+            })
+            .catch((err) => {
+                statusText.innerText = "❌ Camera access denied or not found.";
+                console.error("Camera error: ", err);
+            });
+        }
+
+        async function predictLoop() {
+            let nowInMs = Date.now();
+            
+            if (video.currentTime !== lastVideoTime) {
+                lastVideoTime = video.currentTime;
+                
+                if (handLandmarker) {
+                    const results = handLandmarker.detectForVideo(video, nowInMs);
+                    
+                    if (results.landmarks && results.landmarks.length > 0) {
+                        console.log("🖐️ Hand Coordinates:", results.landmarks);
+                    }
+                }
+            }
+            window.requestAnimationFrame(predictLoop);
+        }
+
+        // Initialize the tracking environment
+        initializeHandLandmarker();
+    </script>
         <br>
     
     <br>
