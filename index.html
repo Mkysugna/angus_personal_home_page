@@ -14,6 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Angus - Personal Webpage</title>
     <link rel="icon" type="image/x-icon" href="black.jpg">
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
 
 </head>
 
@@ -153,10 +154,12 @@
     
     <br>
         <br>
-    <video id="webcam" autoplay playsinline></video>
+    <p id="status">Loading AI Models... Please wait...</p>
     
-    <!-- This line links your JavaScript file -->
-    <script src="app.js"></script>    
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline width="640" height="480"></video>
+    </div> 
+        <script src="app.js"></script>
         <br>
     
     <br>
