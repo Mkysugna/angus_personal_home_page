@@ -165,16 +165,15 @@
     
     <br>
         <br>
-   <h3 id="status">🔄 Loading MediaPipe Engines... Please wait...</h3>
+    <h3 id="status">🔄 Loading MediaPipe Engines... Please wait...</h3>
     
     <div id="video-container">
         <video id="webcam" autoplay playsinline width="640" height="480"></video>
     </div>
 
-    <!-- We load MediaPipe inside a native JavaScript module script -->
     <script type="module">
-        // Import directly from ESM CDN to guarantee variable scope definition
-        import { HandLandmarker, FilesetResolver } from "https://jsdelivr.net";
+        // Switched to unpkg to bypass the jsDelivr connection block
+        import { HandLandmarker, FilesetResolver } from "https://unpkg.com";
 
         const video = document.getElementById("webcam");
         const statusText = document.getElementById("status");
@@ -183,12 +182,12 @@
 
         async function initializeHandLandmarker() {
             try {
-                // 1. Get the WebAssembly (WASM) runner files
+                // Fetching WASM files from unpkg mirror
                 const vision = await FilesetResolver.forVisionTasks(
-                    "https://jsdelivr.net"
+                    "https://unpkg.com"
                 );
                 
-                // 2. Load the actual AI model file
+                // Loading the AI model
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
                     baseOptions: {
                         modelAssetPath: "https://googleapis.com",
@@ -236,7 +235,6 @@
             window.requestAnimationFrame(predictLoop);
         }
 
-        // Initialize the tracking environment
         initializeHandLandmarker();
     </script>
         <br>
