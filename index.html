@@ -90,7 +90,9 @@
 
         // Initialize MediaPipe Instance
         const hands = new Hands({
-            locateFile: (file) => `https://jsdelivr.net{file}`
+            locateFile: (file) => {
+        return `./mediapipe_assets/${file}`;
+    }
         });
 
         hands.setOptions({
