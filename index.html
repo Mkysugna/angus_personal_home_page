@@ -1,256 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-        <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-2SQ6VF0M7F"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-2SQ6VF0M7F');
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Angus - Personal Webpage</title>
-    <link rel="icon" type="image/x-icon" href="black.jpg">
+    <title>MediaPipe Hand Tracker</title>
+    
+    <!-- Load MediaPipe dependencies -->
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
     <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
 
-</head>
-
-
-<style>
-    .flex {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-    a {
-        text-decoration: none;
-    }
-
-
-    .bar {
-        display:flex;
-        justify-content: center;
-        width:min(100%);
-        
-
-
-    }
-    .btn:hover{
-      box-shadow: 0 14px 28px rgba(0,0,0,0.18);
-      transform: translateY(-10px);
-    }
-
-     .btn{
-      flex:1;
-      padding:14px 16px;
-      text-align:center;
-      border:0;           /* no border */
-      border-radius:0;   /* no rounding */
-      background-color: rgba(32, 43, 48, 0.795);
-      color:lightblue;
-      cursor:pointer;
-      user-select:none;
-      margin: 0;
-
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      transition: box-shadow 180ms ease, transform 180ms ease;
-    }
-
-
-    .float{
-        position: fixed;
-        top: 20px;
-        right: 30px;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: lightblue;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        
-
-
-
-
-    }
-    
-      .float2{
-        position: fixed;
-        top: 80px;
-        right: 30px;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: lightblue;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        
-
-
-
-
-    }
-           
-        #video-container { 
-            position: relative; 
-            display: inline-block; 
-            margin-top: 20px;
+    <style>
+        /* Container holds both layers */
+        .tracker-container {
+            position: relative;
+            width: 640px;   
+            height: 480px;  
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            /* Mirrors the stream to look like a standard mirror webcam */
+            transform: scaleX(-1); 
         }
-        video { 
-            transform: rotateY(180deg); 
-            border-radius: 10px;
-            background: #000;
+
+        /* Both elements must stretch perfectly over the container box */
+        .input_video, 
+        .output_canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
-    
+
+        /* Video sits on bottom layer */
+        .input_video {
+            z-index: 1;
+        }
+
+        /* Canvas sits on top layer to show tracking data */
+        .output_canvas {
+            z-index: 2;
+            pointer-events: none; /* Allows user clicks to pass through if needed */
+        }
     </style>
-   
+</head>
+<body>
 
-<body style="background-color: rgb(62, 81, 85); margin: 0; border: 0;">
-
-    <a href="../../index.html" class="float">
-
-     <span style='font-size:30px;'>-</span>  
-
-    </a>
-    <a href="cheese.jpeg" class="float2">
-
-     <span style='font-size:30px;'>+</span>  
-
-    </a>
-  
-
-    <div class=".flex" style="color: lightblue; font-size:300%; text-align: center; padding-top: 30px;">
-    Portfolio, Progress and Myself : Angus
-    </div>
-    <hr style="width: 67%; height: 5px; background-color: rgba(0, 255, 255, 0.219);">
-    <br><br>
-    
-    <div class="bar", style="min-width: 100%; color: lightblue; margin: 0;">
-        <button class="btn"><a href="./angushobbies.html" style="color: lightblue;">Hobbies</a></button>
-        <button class="btn"><a href="./anguslikes.html" style="color: lightblue;">Likes and dislikes</a></button>
-        <button class="btn"><a href="./anguseducation.html" style="color: lightblue;">Education</a></button>
-        <button class="btn"><a href="./angusach.html" style="color: lightblue;">Achievements</a></button>
-        <button class="btn"><a href="./angusgoal.html" style="color: lightblue;">Future goals</a></button>
-        
-
-    </div>
-   
-    <br><br>
-    <div style="font-size: 30px; padding-left: 20px; padding-top: 10px; padding-bottom: 10px; border-radius: 8px;color: rgba(157, 227, 255, 0.795); border-left: 3px solid rgba(188, 219, 231, 0.795); margin-left: 10px;">About Me</div><br>
-    <div class="wide"; style="background-color: rgba(32, 43, 48, 0.795); padding: 15px 50px 10px 5px; color: rgba(157, 227, 255, 0.795); font-size: 20px;">
-            <li>
-                <ol>
-                    <span style="color: rgba(188, 219, 231, 0.795);">I was born in the United Christan Hospital's Hong Kong branch in september of 2009. As of now, my family has moved house 3 seperate times, with the first one in 2013 from Mei Lok to Wu Hong, second from Wu Hong to Telford and third from Telford to Happy Gardens.</span>
-                </ol>
-
-                <ol>
-                    <span style="color: rgba(188, 219, 231, 0.795);">This year, I will be 17. I still remember when I was in primary school. Good days.</span>
-                </ol>
-                
-                <ol>
-                    <span style="color: rgba(188, 219, 231, 0.795);">At this juncture, I study at Hong Kong Bluebell College as a twelth grader in Class A, primarily taking fine arts and seconding in ICT.</span>
-                </ol>
-                <ol>
-                    <span style="color: rgba(188, 219, 231, 0.795);">I can only wish to be a normal person. We all know I cannot achieve anything meaningful in the grand scheme of things, and all of us cannot bear the burden of something greater.</span>
-                </ol>
-                
-            </li>
-    </div>
-    
-    <br>
-        <br>
-    <h3 id="status">🔄 Loading MediaPipe Engines... Please wait...</h3>
-    
-    <div id="video-container">
-        <video id="webcam" autoplay playsinline width="640" height="480"></video>
+    <!-- Target Div Component -->
+    <div class="tracker-container">
+        <video class="input_video" autoplay playsinline></video>
+        <canvas class="output_canvas"></canvas>
     </div>
 
-    <script type="module">
-        // Switched to unpkg to bypass the jsDelivr connection block
-        import { HandLandmarker, FilesetResolver } from "https://unpkg.com";
+    <script>
+        const videoElement = document.querySelector('.input_video');
+        const canvasElement = document.querySelector('.output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
 
-        const video = document.getElementById("webcam");
-        const statusText = document.getElementById("status");
-        let handLandmarker = undefined;
-        let lastVideoTime = -1;
+        // Set static processing dimensions
+        canvasElement.width = 640;
+        canvasElement.height = 480;
 
-        async function initializeHandLandmarker() {
-            try {
-                // Fetching WASM files from unpkg mirror
-                const vision = await FilesetResolver.forVisionTasks(
-                    "https://unpkg.com"
-                );
-                
-                // Loading the AI model
-                handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                    baseOptions: {
-                        modelAssetPath: "https://googleapis.com",
-                        delegate: "GPU"
-                    },
-                    runningMode: "VIDEO",
-                    numHands: 2
-                });
-                
-                statusText.innerText = "✨ Models loaded! Requesting camera...";
-                startCamera();
-            } catch (error) {
-                statusText.innerText = "❌ Error loading AI models. See developer console.";
-                console.error("MediaPipe failed to load:", error);
-            }
-        }
-
-        function startCamera() {
-            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
-            .then((stream) => {
-                video.srcObject = stream;
-                video.addEventListener("loadeddata", predictLoop);
-                statusText.innerText = "✅ Tracking Active! Right-click -> Inspect -> Console to see data.";
-            })
-            .catch((err) => {
-                statusText.innerText = "❌ Camera access denied or not found.";
-                console.error("Camera error: ", err);
-            });
-        }
-
-        async function predictLoop() {
-            let nowInMs = Date.now();
+        function onResults(results) {
+            // Clear the previous frame drawing lines
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             
-            if (video.currentTime !== lastVideoTime) {
-                lastVideoTime = video.currentTime;
-                
-                if (handLandmarker) {
-                    const results = handLandmarker.detectForVideo(video, nowInMs);
-                    
-                    if (results.landmarks && results.landmarks.length > 0) {
-                        console.log("🖐️ Hand Coordinates:", results.landmarks);
-                    }
+            // Notice: We don't draw results.image here because the video element 
+            // behind the transparent canvas is already showing the raw camera feed.
+
+            if (results.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    // Draw lines connecting the hand joints (Cyan colored)
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+                        color: '#00F0FF', 
+                        lineWidth: 4
+                    });
+                    // Draw the joint dots (Bright Magenta colored)
+                    drawLandmarks(canvasCtx, landmarks, {
+                        color: '#FF007F', 
+                        lineWidth: 1,
+                        radius: 4
+                    });
                 }
             }
-            window.requestAnimationFrame(predictLoop);
         }
 
-        initializeHandLandmarker();
+        // Initialize MediaPipe Instance
+        const hands = new Hands({
+            locateFile: (file) => `https://jsdelivr.net{file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(onResults);
+
+        // Instantiating the MediaPipe camera helper pipeline
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+
+        camera.start();
     </script>
-        <br>
-    
-    <br>
-     <div style="text-align: center; background-color:rgba(103, 199, 199, 0.363); border-radius: 0px; color: rgb(132, 226, 226); padding: 15px; margin: 0 0 0 0;width: 100%; height:100%">
-      <a href="200w.gif" style="color: lightblue;">Bad KFC</a></div>
-    <br>
-    <div style="text-align: center; background-color:rgba(103, 199, 199, 0.363); border-radius: 0px; color: rgb(132, 226, 226); padding: 15px; margin: 0 0 0 0;width: 100%; height:100%">
-      <a href="black.jpg" style="color: lightblue;">Ong</a></div>
-    <br>
-    <div style="text-align: center; background-color:rgba(103, 199, 199, 0.363); border-radius: 0px; color: rgb(132, 226, 226); padding: 15px; margin: 0 0 0 0;width: 100%; height:100%">
-      <a href="ai.jpeg" style="color: lightblue;">KFC</a></div><br>
-    <div style="text-align: center; background-color:rgba(103, 199, 199, 0.363); border-radius: 0px; color: rgb(132, 226, 226); padding: 15px; margin: 0 0 0 0;width: 100%; height:100%">
-      <a href="../../index.html" style="color: lightblue;">Back to Y12A Class Index</a></div>
-    <div style="color: darkolivegreen;">Take my stated schooling in the Education page with a grain of salt, I forgot.</div>
 </body>
 </html>
-
