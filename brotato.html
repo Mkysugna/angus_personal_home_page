@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brotato Mini Arena - Absolute Laser Fix Build</title>
+    <style>
+        body {
+            margin: 0;
+            background: #222;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #ui {
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            gap: 20px;
+            background: #333;
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+        #container { position: relative; }
+        canvas {
+            background: #4a5759;
+            border: 4px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #shopMenu {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(25, 25, 25, 0.98);
+            border: 4px solid #00f5ff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 500px;
+            box-shadow: 0 0 40px rgba(0,245,255,0.4);
+        }
+        .shop-section {
+            margin: 15px 0;
+            border-top: 1px solid #444;
+            padding-top: 10px;
+        }
+        .shop-section h3 { margin: 5px 0 10px 0; font-size: 14px; text-transform: uppercase; color: #e9d8a6;}
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .shop-btn {
+            background: #d4a373;
+            color: #222;
+            border: none;
+            padding: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .shop-btn span { font-size: 9px; font-weight: normal; opacity: 0.8; margin-top: 2px; }
+        .laser-up-btn { background: #0077b6; color: white; border: 1px solid #00f5ff; }
+        .laser-up-btn:hover { background: #0096c7; }
+        .shop-btn:hover { background: #faedcd; }
+        .shop-btn:disabled { background: #444; color: #777; border-color: #555; cursor: not-allowed; }
+        #nextWaveBtn { background: #2a9d8f; color: white; margin-top: 15px; grid-column: span 2; font-size: 14px; }
+        #nextWaveBtn:hover { background: #264653; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div>Wave: <span id="waveNum">1</span></div>
+    <div>HP: <span id="hp">100</span>/<span id="maxHp">100</span></div>
+    <div>Cash: $<span id="materials">0</span></div>
+    <div>Score: <span id="score">0</span></div>
+    <div>Goal: <span id="progress">0</span>/<span id="goal">200</span></div>
+</div>
+
+<div id="container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="shopMenu">
+        <h2>--- ARSENAL & SATELLITE SHOP ---</h2>
+        <p>Current Cash: $<span id="shopMaterials">0</span></p>
+        
+        <div class="shop-section">
+            <h3>Weapons & Survival</h3>
+            <div class="shop-grid">
+                <button id="buyLaserBtn" class="shop-btn" onclick="buyWeapon('laser')">Unlock Laser Beacon ($60) <span id="laserState">Locked</span></button>
+                <button id="buyShotgunBtn" class="shop-btn" onclick="buyWeapon('shotgun')">Unlock Shotgun ($45) <span id="shotgunState">Locked</span></button>
+                <button id="buySMGBtn" class="shop-btn" onclick="buyWeapon('smg')">Unlock SMG ($50) <span id="smgState">Locked</span></button>
+                <button id="healBtn" class="shop-btn" onclick="buyHeal()">Heal +30 HP ($15)</button>
+            </div>
+        </div>
+
+        <div class="shop-section">
+            <h3>Orbital Laser Upgrades</h3>
+            <div class="shop-grid">
+                <button id="upLaserFreq" class="shop-btn laser-up-btn" onclick="upgradeLaser('freq')">Satellite Frequency ($35) <span id="laserFreqLvl">Cooldown: 4.0s</span></button>
+                <button id="upLaserDmg" class="shop-btn laser-up-btn" onclick="upgradeLaser('dmg')">Beam Density ($40) <span id="laserDmgLvl">Tick Dmg: 4</span></button>
+                <button id="upLaserRad" class="shop-btn laser-up-btn" onclick="upgradeLaser('rad')">Blast Radius ($40) <span id="laserRadLvl">Radius: 90px</span></button>
+                <button id="buySpeedBtn" class="shop-btn" onclick="buySpeed()">+10% Potato Speed ($20)</button>
+                <button id="nextWaveBtn" class="shop-btn" onclick="nextWave()">Lock & Load Next Wave</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const hpDisplay = document.getElementById('hp');
+const maxHpDisplay = document.getElementById('maxHp');
+const materialsDisplay = document.getElementById('materials');
+const scoreDisplay = document.getElementById('score');
+const progressDisplay = document.getElementById('progress');
+const goalDisplay = document.getElementById('goal');
+const waveNumDisplay = document.getElementById('waveNum');
+const shopMenu = document.getElementById('shopMenu');
+const shopMaterials = document.getElementById('shopMaterials');
+
+let wave = 1, score = 0, waveProgress = 0, scoreTarget = 200, materials = 0;
+let gameOver = false, inShop = false, spawnTimer = null, bossSpawned = false;
+let keys = {}, enemies = [], bullets = [], bosses = [], damageTexts = [];
+
+let player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 4, hp: 100, maxHp: 100, color: '#d4a373' };
+
+let weaponsUnlocked = { pistol: true, smg: false, shotgun: false };
+let weaponsTimers = {
+    pistol: { fireRate: 350, lastShot: 0 },
+    smg: { fireRate: 120, lastShot: 0 },
+    shotgun: { fireRate: 800, lastShot: 0 }
+};
+
+let orbitalLaser = {
+    unlocked: false, cooldown: 4000, lastStrike: 0, strikeTime: 0, duration: 600,   
+    lockedX: 0, lockedY: 0, radius: 90, tickDamage: 4, active: false,
+    freqLevel: 1, dmgLevel: 1, radLevel: 1, beamY: -600, beamSpeed: 25,
+    impactDealt: false
+};
+
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function getClosestEnemy() {
+    let allTargets = [...enemies, ...bosses];
+    if (allTargets.length === 0) return null;
+    let closest = allTargets[0];
+    let minDist = Math.hypot(closest.x - player.x, closest.y - player.y);
+    for (let i = 1; i < allTargets.length; i++) {
+        let dist = Math.hypot(allTargets[i].x - player.x, allTargets[i].y - player.y);
+        if (dist < minDist) { minDist = dist; closest = allTargets[i]; }
+    }
+    return closest;
+}
+
+function addDamageText(x, y, text, color) {
+    damageTexts.push({
+        x: x + (Math.random() * 20 - 10),
+        y: y - 10,
+        text: text,
+        color: color,
+        alpha: 1,
+        life: 30
+    });
+}
+
+function spawnEnemy() {
+    if (gameOver || inShop) return;
+    if (wave % 3 === 0 && !bossSpawned && waveProgress >= scoreTarget - 50) { spawnBoss(); bossSpawned = true; }
+    if (bosses.length > 0) { spawnTimer = setTimeout(spawnEnemy, 1000); return; }
+
+    let hpMultiplier = 1 + (wave - 1) * 0.35; 
+    let rand = Math.random();
+    let x, y;
+    if (Math.random() < 0.5) { x = Math.random() < 0.5 ? -30 : canvas.width + 30; y = Math.random() * canvas.height; } 
+    else { x = Math.random() * canvas.width; y = Math.random() < 0.5 ? -30 : canvas.height + 30; }
+
+    if (rand < 0.25) {
+        enemies.push({ x: x, y: y, size: 12, hp: Math.round(15 * hpMultiplier), maxHp: Math.round(15 * hpMultiplier), speed: 3.2, color: '#e63946', type: 'fast' });
+    } else if (rand > 0.82) {
+        enemies.push({ x: x, y: y, size: 28, hp: Math.round(80 * hpMultiplier), maxHp: Math.round(80 * hpMultiplier), speed: 0.9, color: '#370617', type: 'tank' });
+    } else {
+        enemies.push({ x: x, y: y, size: 17, hp: Math.round(30 * hpMultiplier), maxHp: Math.round(30 * hpMultiplier), speed: 1.8, color: '#9b2226', type: 'normal' });
+    }
+    spawnTimer = setTimeout(spawnEnemy, Math.max(120, 1300 - (wave * 70)));
+}
+
+function spawnBoss() {
+    let bossPool = ['goliath', 'hive', 'phantom'], bossSelection = bossPool[(wave / 3 - 1) % 3], x = canvas.width / 2, y = -50; 
+    if (bossSelection === 'goliath') bosses.push({ x: x, y: y, size: 55, hp: 750 * (wave/3), maxHp: 750 * (wave/3), speed: 0.8, color: '#480ca8', type: 'goliath' });
+    else if (bossSelection === 'hive') bosses.push({ x: x, y: y, size: 45, hp: 500 * (wave/3), maxHp: 500 * (wave/3), speed: 1.2, color: '#2b9348', type: 'hive', lastSummon: 0 });
+    else if (bossSelection === 'phantom') bosses.push({ x: x, y: y, size: 35, hp: 420 * (wave/3), maxHp: 420 * (wave/3), speed: 1.5, color: '#ffb703', type: 'phantom', lastDash: 0, isDashing: false, dashDx: 0, dashDy: 0, dashEnd: 0 });
+}
+
+function fireWeapon(type) {
+    let target = getClosestEnemy(); if (!target) return;
+    let angle = Math.atan2(target.y - player.y, target.x - player.x);
+    if (type === 'pistol') bullets.push({ x: player.x, y: player.y, size: 6, dx: Math.cos(angle) * 8, dy: Math.sin(angle) * 8, damage: 25, color: '#ffdd67' });
+    else if (type === 'smg') bullets.push({ x: player.x, y: player.y, size: 4, dx: Math.cos(angle) * 9, dy: Math.sin(angle) * 9, damage: 12, color: '#a2d2ff' });
+    else if (type === 'shotgun') {
+        for (let i = -2; i <= 2; i++) { bullets.push({ x: player.x, y: player.y, size: 5, dx: Math.cos(angle + (i * 0.15)) * 8.5, dy: Math.sin(angle + (i * 0.15)) * 8.5, damage: 18, color: '#f4a261' }); }
+    }
+}
+
+function updateShopButtons() {
+    shopMaterials.innerText = materials;
+    document.getElementById('buyLaserBtn').disabled = orbitalLaser.unlocked || materials < 60;
+    document.getElementById('buyShotgunBtn').disabled = weaponsUnlocked.shotgun || materials < 45;
+    document.getElementById('buySMGBtn').disabled = weaponsUnlocked.smg || materials < 50;
+    document.getElementById('buySpeedBtn').disabled = materials < 20;
+    document.getElementById('healBtn').disabled = materials < 15 || player.hp >= player.maxHp;
+    document.getElementById('upLaserFreq').disabled = !orbitalLaser.unlocked || materials < 35;
+    document.getElementById('upLaserDmg').disabled = !orbitalLaser.unlocked || materials < 40;
+    document.getElementById('upLaserRad').disabled = !orbitalLaser.unlocked || materials < 40;
+    document.getElementById('laserState').innerText = orbitalLaser.unlocked ? "Owned" : "Locked";
+    document.getElementById('shotgunState').innerText = weaponsUnlocked.shotgun ? "Owned" : "Locked";
+    document.getElementById('smgState').innerText = weaponsUnlocked.smg ? "Owned" : "Locked";
+    document.getElementById('laserFreqLvl').innerText = `Cooldown: ${(orbitalLaser.cooldown/1000).toFixed(1)}s (Lvl ${orbitalLaser.freqLevel})`;
+    document.getElementById('laserDmgLvl').innerText = `Tick Dmg: ${orbitalLaser.tickDamage} (Lvl ${orbitalLaser.dmgLevel})`;
+    document.getElementById('laserRadLvl').innerText = `Radius: ${orbitalLaser.radius}px (Lvl ${orbitalLaser.radLevel})`;
+}
+
+function upgradeLaser(stat) {
+    if (stat === 'freq' && materials >= 35) { materials -= 35; orbitalLaser.cooldown = Math.max(1000, orbitalLaser.cooldown - 500); orbitalLaser.freqLevel++; }
+    if (stat === 'dmg' && materials >= 40) { materials -= 40; orbitalLaser.tickDamage += 4; orbitalLaser.dmgLevel++; }
+    if (stat === 'rad' && materials >= 40) { materials -= 40; orbitalLaser.radius += 25; orbitalLaser.radLevel++; }
+    updateShopButtons();
+}
+
+function buyWeapon(wpn) {
+    if (wpn === 'laser' && materials >= 60 && !orbitalLaser.unlocked) { materials -= 60; orbitalLaser.unlocked = true; }
+    if (wpn === 'shotgun' && materials >= 45 && !weaponsUnlocked.shotgun) { materials -= 45; weaponsUnlocked.shotgun = true; }
+    if (wpn === 'smg' && materials >= 50 && !weaponsUnlocked.smg) { materials -= 50; weaponsUnlocked.smg = true; }
+    updateShopButtons();
+}
+function buySpeed() { if (materials >= 20) { materials -= 20; player.speed *= 1.1; updateShopButtons(); } }
+function buyHeal() { if (materials >= 15 && player.hp < player.maxHp) { materials -= 15; player.hp = Math.min(player.maxHp, player.hp + 30); hpDisplay.innerText = player.hp; updateShopButtons(); } }
+function enterShop() { inShop = true; clearTimeout(spawnTimer); enemies = []; bullets = []; bosses = []; damageTexts = []; orbitalLaser.active = false; bossSpawned = false; shopMenu.style.display = 'block'; updateShopButtons(); }
+function nextWave() { shopMenu.style.display = 'none'; wave++; waveProgress = 0; scoreTarget = 200 + (wave - 1) * 100; waveNumDisplay.innerText = wave; progressDisplay.innerText = 0; goalDisplay.innerText = scoreTarget; materialsDisplay.innerText = materials; inShop = false; spawnEnemy(); }
+function update() {
+    if (gameOver || inShop) return;
+
+    if (keys['w'] || keys['arrowup']) player.y -= player.speed;
+    if (keys['s'] || keys['arrowdown']) player.y += player.speed;
+    if (keys['a'] || keys['arrowleft']) player.x -= player.speed;
+    if (keys['d'] || keys['arrowright']) player.x += player.speed;
+
+    player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+    player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+
+    let now = Date.now();
+    for (let w in weaponsUnlocked) {
+        if (weaponsUnlocked[w] && now - weaponsTimers[w].lastShot > weaponsTimers[w].fireRate) { fireWeapon(w); weaponsTimers[w].lastShot = now; }
+    }
+
+    if (orbitalLaser.unlocked && !orbitalLaser.active && now - orbitalLaser.lastStrike > orbitalLaser.cooldown) {
+        let target = getClosestEnemy();
+        if (target) {
+            orbitalLaser.lockedX = Math.floor(target.x); 
+            orbitalLaser.lockedY = Math.floor(target.y); 
+            orbitalLaser.beamY = -600; 
+            orbitalLaser.active = true; 
+            orbitalLaser.impactDealt = false; 
+            orbitalLaser.strikeTime = now; 
+            orbitalLaser.lastStrike = now;
+        }
+    }
+    if (orbitalLaser.active && now - orbitalLaser.strikeTime > orbitalLaser.duration) { orbitalLaser.active = false; }
+    
+    if (orbitalLaser.active && !orbitalLaser.impactDealt) {
+        orbitalLaser.beamY += orbitalLaser.beamSpeed; 
+        if (orbitalLaser.beamY >= orbitalLaser.lockedY) {
+            orbitalLaser.beamY = orbitalLaser.lockedY;
+            orbitalLaser.impactDealt = true; 
+        }
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i]; b.x += b.dx; b.y += b.dy;
+        if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) bullets.splice(i, 1);
+    }
+
+    for (let i = damageTexts.length - 1; i >= 0; i--) {
+        let dt = damageTexts[i]; dt.y -= 0.6; dt.life--; dt.alpha = dt.life / 30;
+        if (dt.life <= 0) damageTexts.splice(i, 1);
+    }
+
+    // Boss Loop
+    for (let i = bosses.length - 1; i >= 0; i--) {
+        let b = bosses[i];
+        if (b.type === 'goliath') { let a = Math.atan2(player.y - b.y, player.x - b.x); b.x += Math.cos(a) * b.speed; b.y += Math.sin(a) * b.speed; } 
+        else if (b.type === 'hive') {
+            let a = Math.atan2(player.y - b.y, player.x - b.x); b.x += Math.cos(a) * b.speed; b.y += Math.sin(a) * b.speed;
+            if (now - b.lastSummon > 2200) {
+                enemies.push({ x: b.x + 35, y: b.y, size: 10, hp: Math.round(15 * (1 + (wave-1)*0.2)), maxHp: Math.round(15 * (1 + (wave-1)*0.2)), speed: 2.8, color: '#74c69d', type: 'minion' });
+                enemies.push({ x: b.x - 35, y: b.y, size: 10, hp: Math.round(15 * (1 + (wave-1)*0.2)), maxHp: Math.round(15 * (1 + (wave-1)*0.2)), speed: 2.8, color: '#74c69d', type: 'minion' });
+                b.lastSummon = now;
+            }
+        } 
+        else if (b.type === 'phantom') {
+            if (!b.isDashing) {
+                if (now - b.lastDash > 1800) { let a = Math.atan2(player.y - b.y, player.x - b.x); b.isDashing = true; b.dashDx = Math.cos(a) * 13; b.dashDy = Math.sin(a) * 13; b.dashEnd = now + 500; }
+            } else { b.x += b.dashDx; b.y += b.dashDy; if (now > b.dashEnd) { b.isDashing = false; b.lastDash = now; } }
+        }
+
+        if (Math.hypot(player.x - b.x, player.y - b.y) < player.size + b.size) { player.hp -= b.type === 'goliath' ? 30 : 15; hpDisplay.innerText = Math.max(0, player.hp); if (player.hp <= 0) gameOver = true; }
+        
+        // Laser Hit Boss Check
+        if (orbitalLaser.active && orbitalLaser.impactDealt && Math.hypot(orbitalLaser.lockedX - b.x, orbitalLaser.lockedY - b.y) < b.size + orbitalLaser.radius) { 
+            b.hp -= orbitalLaser.tickDamage; addDamageText(b.x, b.y, orbitalLaser.tickDamage, '#00f5ff');
+            if (b.hp <= 0) { killedBoss(i); continue; } 
+        }
+
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            if (Math.hypot(bullets[j].x - b.x, bullets[j].y - b.y) < b.size + bullets[j].size) { 
+                b.hp -= bullets[j].damage; addDamageText(b.x, b.y, bullets[j].damage, '#ffdd67');
+                bullets.splice(j, 1); if (b.hp <= 0) killedBoss(i); break; 
+            }
+        }
+    }
+
+    // Creeps Loop
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i]; let a = Math.atan2(player.y - e.y, player.x - e.x); e.x += Math.cos(a) * e.speed; e.y += Math.sin(a) * e.speed;
+        if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { player.hp -= e.type === 'tank' ? 20 : 10; hpDisplay.innerText = Math.max(0, player.hp); enemies.splice(i, 1); if (player.hp <= 0) gameOver = true; continue; }
+        
+        // FIXED GRUNT COLLISION: Correctly tracking grunt loop variables ("e") instead of broken cross references
+        if (orbitalLaser.active && orbitalLaser.impactDealt && Math.hypot(orbitalLaser.lockedX - e.x, orbitalLaser.lockedY - e.y) < e.size + orbitalLaser.radius) { 
+            e.hp -= orbitalLaser.tickDamage; addDamageText(e.x, e.y, orbitalLaser.tickDamage, '#00f5ff');
+            if (e.hp <= 0) { killedEnemy(i); continue; } 
+        }
+
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            if (Math.hypot(bullets[j].x - e.x, bullets[j].y - e.y) < e.size + bullets[j].size) { 
+                e.hp -= bullets[j].damage; addDamageText(e.x, e.y, bullets[j].damage, '#ffdd67');
+                bullets.splice(j, 1); if (e.hp <= 0) killedEnemy(i); break; 
+            }
+        }
+    }
+}
+
+function killedEnemy(index) {
+    let e = enemies[index]; enemies.splice(index, 1); let reward = e.type === 'tank' ? 20 : (e.type === 'fast' ? 10 : 5);
+    score += reward * 2; waveProgress += reward * 2; materials += reward; scoreDisplay.innerText = score; materialsDisplay.innerText = materials;
+    progressDisplay.innerText = Math.min(scoreTarget, waveProgress); if (waveProgress >= scoreTarget && bosses.length === 0) enterShop();
+}
+function killedBoss(index) { bosses.splice(index, 1); materials += 150; score += 500; waveProgress += 200; scoreDisplay.innerText = score; materialsDisplay.innerText = materials; enterShop(); }
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (gameOver) { ctx.fillStyle = '#fff'; ctx.font = '42px Arial'; ctx.textAlign = 'center'; ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2); return; }
+
+    if (orbitalLaser.active) {
+        ctx.strokeStyle = 'rgba(0, 245, 255, 0.4)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(orbitalLaser.lockedX, orbitalLaser.lockedY, orbitalLaser.radius, 0, Math.PI * 2); ctx.stroke();
+        let streamGrd = ctx.createLinearGradient(orbitalLaser.lockedX - 20, 0, orbitalLaser.lockedX + 20, 0);
+        streamGrd.addColorStop(0, 'rgba(0, 119, 182, 0)'); streamGrd.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)'); streamGrd.addColorStop(1, 'rgba(0, 119, 182, 0)');
+        ctx.fillStyle = streamGrd; ctx.fillRect(orbitalLaser.lockedX - 25, 0, 50, orbitalLaser.beamY);
+
+        if (orbitalLaser.impactDealt) {
+            let radialGrd = ctx.createRadialGradient(orbitalLaser.lockedX, orbitalLaser.lockedY, 2, orbitalLaser.lockedX, orbitalLaser.lockedY, orbitalLaser.radius);
+            radialGrd.addColorStop(0, 'rgba(255, 255, 255, 1)'); radialGrd.addColorStop(0.2, 'rgba(0, 245, 255, 0.8)'); radialGrd.addColorStop(1, 'rgba(0, 58, 86, 0)');
+            ctx.fillStyle = radialGrd; ctx.beginPath(); ctx.arc(orbitalLaser.lockedX, orbitalLaser.lockedY, orbitalLaser.radius, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    for (let b of bullets) { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); }
+    for (let b of bosses) { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); let barW = b.size * 2, barH = 7, barX = b.x - b.size, barY = b.y - b.size - 15; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(barX, barY, barW, barH); ctx.fillStyle = '#ff477e'; ctx.fillRect(barX, barY, barW * (b.hp / b.maxHp), barH); }
+    for (let e of enemies) { ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2); ctx.fill(); let barW = e.size * 2, barH = 5, barX = e.x - e.size, barY = e.y - e.size - 10; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(barX, barY, barW, barH); ctx.fillStyle = '#2a9d8f'; ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH); }
+
+    // PLAYER LAYER STACK: Hardlocked to drawing on the top z-index layer
+    ctx.fillStyle = player.color; ctx.beginPath(); ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(player.x - 6, player.y - 4, 3, 0, Math.PI * 2); ctx.arc(player.x + 6, player.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+
+    ctx.textAlign = 'center'; ctx.font = 'bold 14px Arial';
+    for (let dt of damageTexts) {
+        ctx.fillStyle = `rgba(${dt.color === '#00f
