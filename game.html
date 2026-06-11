@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Twin-Stick Shooter</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-overlay">
+        Health: <span id="ui-health">100</span><br>
+        Score: <span id="ui-score">0</span><br>
+        Cash: $<span id="ui-cash">0</span><br>
+        Weapon: <span id="ui-weapon" style="color: #00ffcc;">Pistol</span>
+    </div>
+
+    <button id="shop-btn">SHOP (P)</button>
+
+    <div id="shop-modal">
+        <!-- Put this inside your shop modal directly under the shop-grid div -->
+<div class="upgrade-section">
+    <h3>Global Perks</h3>
+    <button class="buy-btn" style="margin-top:5px;" onclick="buyGlobalUpgrade('firerate')">Firing Speed Up (+20%) - $400</button>
+    <button class="buy-btn" onclick="buyGlobalUpgrade('speed')">Bullet Speed Up (+15%) - $300</button>
+    <button class="buy-btn" style="margin-top:5px;" onclick="buyGlobalUpgrade('pierce')">Bullet Pierce Up (+1 Enemy) - $500</button>
+    <button class="buy-btn" style="margin-top:5px;" id="slot-upgrade-btn" onclick="buyGlobalUpgrade('slots')">Unlock Weapon Slot (Max 3) - $1000</button>
+</div>
+<div class="cheat-box">
+    <input type="text" id="cheat-input-field" class="cheat-input" placeholder="Enter Secret Code...">
+    <button class="buy-btn" style="width:auto;" onclick="submitCheatCode()">Apply</button>
+</div>
+
+        <div class="shop-header">
+            <h2>Weapon Shop (Cash: $<span id="shop-cash">0</span>)</h2>
+            <button id="close-shop-btn" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <div class="shop-grid" id="shop-grid"></div>
+    </div>
+
+    <div id="game-over-screen">
+        <h1 style="font-size: 60px; color: #ff3366; margin: 0;">GAME OVER</h1>
+        <p style="font-size: 24px;">Final Score: <span id="final-score">0</span></p>
+        <button id="restart-btn">Play Again</button>
+    </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
